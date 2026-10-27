@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PK Markets
 
-## Getting Started
+A Next.js dashboard for Pakistan's markets: PSX / KSE-100, Shariah-compliant stocks (KMI-30, KMI All Share), gold, silver, copper, platinum, crude oil, gasoline, natural gas and PKR exchange rates. It shows live figures, MTD, YTD, 1-year and same-month-last-year changes, charts, news sentiment, a rule-based rise/fall outlook, stable-stock screens and model picks.
 
-First, run the development server:
+> Predictions are automated estimates, **not financial advice**. Act on them at your own risk.
+
+## Run
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. Pages refresh every 60 seconds.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Pages
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Route | What it shows |
+|---|---|
+| `/` | Index tiles, gainers/losers/most active, commodities, currencies, market news, outlook snapshot |
+| `/psx` | KSE-100 with period returns and chart, all PSX indices, sortable/searchable KSE-100 table |
+| `/shariah` | Islamic indices, KMI-30 and KMI All Share constituents |
+| `/commodities`, `/currencies` | Cards and a performance table (Today, MTD, YTD, 1Y, vs same month last year) |
+| `/asset/[id]` | Chart (1D…5Y with 50-day average), stats, monthly closes with MoM/YoY, outlook breakdown, news |
+| `/stock/[symbol]` | PSX company quote, 52-week position, YTD / 1-year change, outlook, news |
+| `/insights` | Asset-class comparison in PKR, top picks, top Shariah picks, most stable, weakest, full screener |
+| `/watchlist` | Starred stocks and assets (saved in your browser) |
 
-## Learn More
+## Data sources (all free)
 
-To learn more about Next.js, take a look at the following resources:
+- **PSX**: public pages on dps.psx.com.pk (index values, index constituents, company quote pages). Responses are cached (60 s for indices, 15 min for company pages), and company pages are fetched 4 at a time.
+- **Commodities & FX**: Yahoo Finance chart endpoint (futures: `GC=F`, `SI=F`, `HG=F`, `PL=F`, `BZ=F`, `CL=F`, `RB=F`, `NG=F`).
+  Yahoo's PKR quotes sometimes flip between two feeds, so USD/PKR is anchored on the SAR and AED rates (both pegged to USD). The other PKR pairs and the PKR gold/silver prices are derived from that cleaned rate.
+- **News**: Google News RSS, scored with a finance word list.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### PSX history
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+PSX doesn't publish free historical prices, so the app saves each day's close to `data/psx-history.json` every time it reads a quote. PSX charts and PSX MTD and same-month-last-year figures fill in as the app runs on trading days. Per-stock YTD and 1-year change come directly from PSX, so they're available straight away.
 
-## Deploy on Vercel
+## Prediction model (`src/lib/analytics.ts`)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The score runs from −100 to +100. It combines:
+- price vs the 20-, 50- and 200-day averages
+- 1-month momentum and RSI(14)
+- news tone
+- for PSX stocks with little local history: YTD, 1-year change, 52-week position and P/E
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+A score of +12 or more is "Likely rise", −12 or less is "Likely fall", and anything in between is "Sideways". Confidence is capped at 80%.
+The stability score uses volatility and drawdown when there is history, and otherwise the width of the 52-week range.
