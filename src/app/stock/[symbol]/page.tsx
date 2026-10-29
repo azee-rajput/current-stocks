@@ -12,6 +12,7 @@ import { maxDrawdown, returns, signalFromHistory, signalFromQuote, stabilityScor
 import { fmt, fmtCompact } from "@/lib/format";
 import { getDividendInfo } from "@/lib/dividends";
 import DividendPanel, { DividendBadge } from "@/components/DividendPanel";
+import InvestCalculator from "@/components/InvestCalculator";
 
 export const dynamic = "force-dynamic";
 
@@ -88,6 +89,11 @@ export default async function StockPage({ params }: { params: Promise<{ symbol: 
           <PriceChart daily={hist} />
         </div>
         <SignalPanel signal={signal} />
+      </div>
+
+      <div className="mb-8">
+        <InvestCalculator symbol={co.symbol} price={co.price} ttmDividend={dividend.ttm} paymentsPerYear={dividend.perYear}
+          frequency={dividend.frequency} change1y={co.change1y} low52={co.low52} high52={co.high52} />
       </div>
 
       <div className="mb-8"><DividendPanel info={dividend} /></div>
