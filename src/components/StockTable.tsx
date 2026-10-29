@@ -22,9 +22,13 @@ export type StockRow = {
   pe?: number | null;
   stability?: number | null;
   signal?: Signal;
+  divFrequency?: string;
+  divYield?: number | null;
 };
 
-type Key = "symbol" | "price" | "changePct" | "volume" | "marketCapM" | "weight" | "ytd" | "change1y" | "pe" | "stability" | "score";
+type Key = "symbol" | "price" | "changePct" | "volume" | "marketCapM" | "weight" | "ytd" | "change1y" | "pe" | "stability" | "score" | "divYield";
+
+const DIV_SCHEDULES = ["Monthly", "Quarterly", "Half-yearly", "Annual"];
 
 export default function StockTable({ rows, initialFilter = "all", showShariahFilter = true, pageSize = 50 }: {
   rows: StockRow[]; initialFilter?: "all" | "shariah" | "watch"; showShariahFilter?: boolean; pageSize?: number;
@@ -33,6 +37,7 @@ export default function StockTable({ rows, initialFilter = "all", showShariahFil
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState(initialFilter);
   const [sector, setSector] = useState("");
+  const [divFilter, setDivFilter] = useState("");
   const [sort, setSort] = useState<{ key: Key; dir: 1 | -1 }>({ key: "marketCapM", dir: -1 });
   const [limit, setLimit] = useState(pageSize);
 
@@ -46,12 +51,13 @@ export default function StockTable({ rows, initialFilter = "all", showShariahFil
       .filter((r) => !needle || r.symbol.toLowerCase().includes(needle) || r.name.toLowerCase().includes(needle))
       .filter((r) => filter === "all" || (filter === "shariah" ? r.shariah : has(r.symbol)))
       .filter((r) => !sector || r.sector === sector)
+      .filter((r) => !divFilter || (divFilter === "any" ? DIV_SCHEDULES.includes(r.divFrequency ?? "") : r.divFrequency === divFilter))
       .sort((a, b) => {
         const x = val(a);
         const y = val(b);
         return (x < y ? -1 : x > y ? 1 : 0) * sort.dir;
       });
-  }, [rows, q, filter, sector, sort, has]);
+  }, [rows, q, filter, sector, divFilter, sort, has]);
 
   const th = (key: Key, label: string, right = true) => (
     <th className={`px-3 py-2 font-medium ${right ? "text-right" : "text-left"}`} aria-sort={sort.key === key ? (sort.dir === 1 ? "ascending" : "descending") : "none"}>
@@ -80,6 +86,13 @@ export default function StockTable({ rows, initialFilter = "all", showShariahFil
             {sectors.map((s) => <option key={s}>{s}</option>)}
           </select>
         )}
+        {hasCol("divFrequency") && (
+          <select value={divFilter} onChange={(e) => setDivFilter(e.target.value)} className="rounded-md border border-border bg-surface-2 px-2 py-1.5 text-xs" aria-label="Dividend schedule">
+            <option value="">Any dividend schedule</option>
+            <option value="any">Pays regular dividends</option>
+            {DIV_SCHEDULES.map((s) => <option key={s} value={s}>Pays {s.toLowerCase()}</option>)}
+          </select>
+        )}
         <span className="ml-auto text-xs text-text-2">{view.length} stocks</span>
       </div>
       <div className="overflow-x-auto">
@@ -96,6 +109,8 @@ export default function StockTable({ rows, initialFilter = "all", showShariahFil
               {th("volume", "Volume")}
               {th("marketCapM", "Mkt cap")}
               {hasCol("weight") && th("weight", "Index wt")}
+              {hasCol("divFrequency") && <th className="px-3 py-2 text-left font-medium">Dividend</th>}
+              {hasCol("divFrequency") && th("divYield", "Div. yield")}
               {hasCol("stability") && th("stability", "Stability")}
               {hasCol("signal") && th("score", "Outlook")}
             </tr>
@@ -117,6 +132,10 @@ export default function StockTable({ rows, initialFilter = "all", showShariahFil
                 <td className="num px-3 py-2 text-right">{fmtCompact(r.volume)}</td>
                 <td className="num px-3 py-2 text-right">{fmtCompact(r.marketCapM * 1e6)}</td>
                 {hasCol("weight") && <td className="num px-3 py-2 text-right">{fmt(r.weight)}%</td>}
+                {hasCol("divFrequency") && (
+                  <td className={`px-3 py-2 text-xs whitespace-nowrap ${DIV_SCHEDULES.includes(r.divFrequency ?? "") ? "" : "text-muted"}`}>{r.divFrequency ?? "—"}</td>
+                )}
+                {hasCol("divFrequency") && <td className="num px-3 py-2 text-right">{r.divYield ? `${fmt(r.divYield, 1)}%` : "—"}</td>}
                 {hasCol("stability") && <td className="num px-3 py-2 text-right">{r.stability ?? "—"}</td>}
                 {hasCol("signal") && <td className="px-3 py-2 text-right">{r.signal && <SignalBadge signal={r.signal} compact />}</td>}
               </tr>

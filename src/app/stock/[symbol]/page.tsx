@@ -10,6 +10,8 @@ import { getHistory } from "@/lib/history";
 import { getNews, summarize } from "@/lib/news";
 import { maxDrawdown, returns, signalFromHistory, signalFromQuote, stabilityScore, volatility } from "@/lib/analytics";
 import { fmt, fmtCompact } from "@/lib/format";
+import { getDividendInfo } from "@/lib/dividends";
+import DividendPanel, { DividendBadge } from "@/components/DividendPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +19,10 @@ export default async function StockPage({ params }: { params: Promise<{ symbol: 
   const { symbol } = await params;
   const co = await getCompany(symbol).catch(() => null);
   if (!co) notFound();
-  const [shariah, news] = await Promise.all([
+  const [shariah, news, dividend] = await Promise.all([
     getShariahSet(),
     getNews(`"${co.name.replace(/\s+(Limited|Ltd\.?)$/i, "")}" OR ${co.symbol} PSX`).catch(() => []),
+    getDividendInfo(co.symbol, co.price),
   ]);
   const hist = getHistory(co.symbol);
   const r = returns(hist);
@@ -48,6 +51,7 @@ export default async function StockPage({ params }: { params: Promise<{ symbol: 
           <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold">
             {co.symbol} <span className="text-lg font-normal text-text-2">{co.name}</span>
             {shariah.has(co.symbol) && <ShariahBadge />}
+            <DividendBadge info={dividend} />
             <WatchStar id={co.symbol} label="Watch" />
           </h1>
           <div className="mt-1 flex items-baseline gap-3">
@@ -85,6 +89,8 @@ export default async function StockPage({ params }: { params: Promise<{ symbol: 
         </div>
         <SignalPanel signal={signal} />
       </div>
+
+      <div className="mb-8"><DividendPanel info={dividend} /></div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
         <Section title="Key statistics">

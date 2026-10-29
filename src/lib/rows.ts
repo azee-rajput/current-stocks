@@ -18,5 +18,7 @@ export function toRow(s: StockView, withSignal = true): StockRow {
     pe: s.company?.pe,
     stability: s.company ? s.stability : undefined,
     signal: withSignal && s.company ? s.signal : undefined,
+    divFrequency: s.dividend?.frequency,
+    divYield: s.dividend?.yieldPct,
   };
 }

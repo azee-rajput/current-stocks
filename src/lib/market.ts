@@ -5,6 +5,7 @@ import { getCompanies, getConstituents, getIndices, getShariahSet, type CompanyQ
 import { getNews, getSentiment, matchHeadlines, summarize, type Headline, type NewsSentiment } from "./news";
 import { maxDrawdown, returns, signalFromHistory, signalFromQuote, stabilityScore, volatility, type Returns, type Signal } from "./analytics";
 import { cached } from "./http";
+import { getDividendInfos, type DividendInfo } from "./dividends";
 
 export type AssetView = {
   asset: Asset;
@@ -66,6 +67,7 @@ export type StockView = Constituent & {
   vol: number | null;
   news: Headline[];
   pickScore: number;
+  dividend?: DividendInfo;
 };
 
 function buildStock(c: Constituent, co: CompanyQuote | null, shariah: boolean, pool: Headline[]): StockView {
@@ -91,15 +93,16 @@ function buildStock(c: Constituent, co: CompanyQuote | null, shariah: boolean, p
 /** Quick view of all KSE-100 stocks (no per-company pages). */
 export async function getKse100Quick(): Promise<StockView[]> {
   const [list, shariah, pool] = await Promise.all([getConstituents("KSE100"), getShariahSet(), getMarketNews().catch(() => [])]);
-  return list.map((c) => buildStock(c, null, shariah.has(c.symbol), pool));
+  const dividends = await getDividendInfos(list);
+  return list.map((c) => ({ ...buildStock(c, null, shariah.has(c.symbol), pool), dividend: dividends.get(c.symbol) }));
 }
 
 /** Full view of all KSE-100 stocks, enriched with each company's quote page (slow on first load, then cached). */
 export async function getKse100Full(): Promise<StockView[]> {
   const [list, shariah, pool] = await Promise.all([getConstituents("KSE100"), getShariahSet(), getMarketNews().catch(() => [])]);
-  const companies = await getCompanies(list.map((c) => c.symbol));
+  const [companies, dividends] = await Promise.all([getCompanies(list.map((c) => c.symbol)), getDividendInfos(list)]);
   const bySym = new Map(companies.map((c) => [c.symbol, c]));
-  return list.map((c) => buildStock(c, bySym.get(c.symbol) ?? null, shariah.has(c.symbol), pool));
+  return list.map((c) => ({ ...buildStock(c, bySym.get(c.symbol) ?? null, shariah.has(c.symbol), pool), dividend: dividends.get(c.symbol) }));
 }
 
 export { getIndices, getConstituents };

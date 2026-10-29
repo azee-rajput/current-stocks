@@ -38,6 +38,9 @@ export default async function InsightsPage() {
   const stable = [...enriched].filter((s) => s.stability != null && (s.company?.change1y ?? 0) > 0)
     .sort((a, b) => (b.stability ?? 0) - (a.stability ?? 0)).slice(0, 10);
   const weak = [...enriched].sort((a, b) => a.signal.score - b.signal.score).slice(0, 10);
+  const regularPayer = (s: StockView) => ["Monthly", "Quarterly", "Half-yearly", "Annual"].includes(s.dividend?.frequency ?? "");
+  const payers = stocks.filter((s) => regularPayer(s) && s.dividend?.yieldPct)
+    .sort((a, b) => (b.dividend!.yieldPct ?? 0) - (a.dividend!.yieldPct ?? 0)).slice(0, 10);
 
   // Asset-class comparison in rupee terms: index-weighted stock returns vs gold (PKR) vs holding US dollars.
   const wsum = enriched.reduce((a, s) => a + (s.company?.change1y != null ? s.weight : 0), 0);
@@ -103,11 +106,13 @@ export default async function InsightsPage() {
         <Notice>Could not load PSX company data right now. Try again in a minute.</Notice>
       ) : (
         <>
-          <div className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <PickList title="Top model picks" subtitle="Best blend of outlook, stability and size" rows={picks} metric={(s) => <SignalBadge signal={s.signal} compact />} />
             <PickList title="Top Shariah-compliant picks" subtitle="Same screen, KMI All Share members only" rows={shariahPicks} metric={(s) => <SignalBadge signal={s.signal} compact />} />
             <PickList title="Most stable stocks" subtitle="Narrowest price swings, positive 1-year return" rows={stable}
               metric={(s) => <span className="num text-xs text-text-2">{s.stability}/100 · <Change value={s.company?.change1y} decimals={1} /></span>} />
+            <PickList title="Best dividend payers" subtitle="Highest yield (last 12 months) among regular payers" rows={payers}
+              metric={(s) => <span className="num text-xs text-text-2">{s.dividend!.frequency} · <span className="text-text">{fmt(s.dividend!.yieldPct, 1)}%</span></span>} />
             <PickList title="Weakest outlook" subtitle="Model expects pressure; caution" rows={weak} metric={(s) => <SignalBadge signal={s.signal} compact />} />
           </div>
 
