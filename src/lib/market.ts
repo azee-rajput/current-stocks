@@ -6,6 +6,7 @@ import { getNews, getSentiment, matchHeadlines, summarize, type Headline, type N
 import { maxDrawdown, returns, signalFromHistory, signalFromQuote, stabilityScore, volatility, type Returns, type Signal } from "./analytics";
 import { cached } from "./http";
 import { getDividendInfos, type DividendInfo } from "./dividends";
+import { getRecentDays } from "./psxDaily";
 
 export type AssetView = {
   asset: Asset;
@@ -68,7 +69,18 @@ export type StockView = Constituent & {
   news: Headline[];
   pickScore: number;
   dividend?: DividendInfo;
+  threeDay: number | null; // % change over the last 3 trading sessions
 };
+
+/** % change over the last 3 trading sessions, ending at the current price. */
+function threeDayChange(history: Point[], price: number): number | null {
+  const today = Date.parse(new Date(Date.now() + 5 * 3600_000).toISOString().slice(0, 10) + "T10:00:00Z");
+  const prior = history.filter((p) => p.t < today);
+  // Before the open or on a holiday the live quote is still the last session's close.
+  const sessions = prior.at(-1)?.v === price ? prior : [...prior, { t: today, v: price }];
+  const base = sessions[sessions.length - 4];
+  return base && Date.now() - base.t < 12 * 86_400_000 ? (price / base.v - 1) * 100 : null;
+}
 
 function buildStock(c: Constituent, co: CompanyQuote | null, shariah: boolean, pool: Headline[]): StockView {
   const history = getHistory(c.symbol);
@@ -87,19 +99,19 @@ function buildStock(c: Constituent, co: CompanyQuote | null, shariah: boolean, p
   // Investment ranking blends the model's direction with stability and size (liquidity).
   const sizeBonus = Math.min(10, Math.log10(Math.max(1, c.marketCapM)) * 2);
   const pickScore = Math.round(signal.score * 0.55 + ((stability ?? 50) - 50) * 0.35 + sizeBonus);
-  return { ...c, shariah, company: co, history, returns: returns(history), signal, stability, vol, news, pickScore };
+  return { ...c, shariah, company: co, history, returns: returns(history), signal, stability, vol, news, pickScore, threeDay: threeDayChange(history, c.price) };
 }
 
 /** Quick view of all KSE-100 stocks (no per-company pages). */
 export async function getKse100Quick(): Promise<StockView[]> {
-  const [list, shariah, pool] = await Promise.all([getConstituents("KSE100"), getShariahSet(), getMarketNews().catch(() => [])]);
+  const [list, shariah, pool] = await Promise.all([getConstituents("KSE100"), getShariahSet(), getMarketNews().catch(() => []), getRecentDays(4).catch(() => [])]);
   const dividends = await getDividendInfos(list);
   return list.map((c) => ({ ...buildStock(c, null, shariah.has(c.symbol), pool), dividend: dividends.get(c.symbol) }));
 }
 
 /** Full view of all KSE-100 stocks, enriched with each company's quote page (slow on first load, then cached). */
 export async function getKse100Full(): Promise<StockView[]> {
-  const [list, shariah, pool] = await Promise.all([getConstituents("KSE100"), getShariahSet(), getMarketNews().catch(() => [])]);
+  const [list, shariah, pool] = await Promise.all([getConstituents("KSE100"), getShariahSet(), getMarketNews().catch(() => []), getRecentDays(4).catch(() => [])]);
   const [companies, dividends] = await Promise.all([getCompanies(list.map((c) => c.symbol)), getDividendInfos(list)]);
   const bySym = new Map(companies.map((c) => [c.symbol, c]));
   return list.map((c) => ({ ...buildStock(c, bySym.get(c.symbol) ?? null, shariah.has(c.symbol), pool), dividend: dividends.get(c.symbol) }));

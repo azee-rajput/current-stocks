@@ -13,6 +13,11 @@ import { fmt, fmtCompact } from "@/lib/format";
 import { getDividendInfo } from "@/lib/dividends";
 import DividendPanel, { DividendBadge } from "@/components/DividendPanel";
 import InvestCalculator from "@/components/InvestCalculator";
+import RecentMoves from "@/components/RecentMoves";
+import TechIndicators from "@/components/TechIndicators";
+import { getConstituents } from "@/lib/psx";
+import { getRecentDays } from "@/lib/psxDaily";
+import { explainMoves } from "@/lib/moves";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +25,17 @@ export default async function StockPage({ params }: { params: Promise<{ symbol: 
   const { symbol } = await params;
   const co = await getCompany(symbol).catch(() => null);
   if (!co) notFound();
-  const [shariah, news, dividend] = await Promise.all([
+  const [shariah, news, dividend, days, kse] = await Promise.all([
     getShariahSet(),
     getNews(`"${co.name.replace(/\s+(Limited|Ltd\.?)$/i, "")}" OR ${co.symbol} PSX`).catch(() => []),
     getDividendInfo(co.symbol, co.price),
+    getRecentDays(13).catch(() => []), // 3 to show + 10 for the volume baseline
+    getConstituents("KSE100").catch(() => []),
   ]);
+  const moves = explainMoves({
+    symbol: co.symbol, days, show: 3, kseWeights: new Map(kse.map((c) => [c.symbol, c.weight])),
+    kseHistory: getHistory("IDX:KSE100"), sectorName: co.sector, payouts: dividend.payouts, news,
+  });
   const hist = getHistory(co.symbol);
   const r = returns(hist);
   const sent = summarize(news);
@@ -66,10 +77,10 @@ export default async function StockPage({ params }: { params: Promise<{ symbol: 
 
       <div className="mb-6"><PeriodGrid items={[
         { label: "Today", value: co.changePct },
-        { label: "MTD", value: r?.mtd, hint: "From locally recorded closes" },
+        { label: "MTD", value: r?.mtd, hint: "From PSX daily closes" },
         { label: "YTD", value: co.ytd, hint: "From PSX" },
         { label: "1 Year", value: co.change1y, hint: "From PSX" },
-        { label: "vs same month LY", value: r?.sameMonthLY, hint: "Needs a year of locally recorded closes" },
+        { label: "vs same month LY", value: r?.sameMonthLY, hint: "This month's average vs the same month last year" },
         { label: "3 Months", value: r?.m3 },
       ]} /></div>
 
@@ -85,10 +96,19 @@ export default async function StockPage({ params }: { params: Promise<{ symbol: 
 
       <div className="mb-8 grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="card p-4">
-          {hist.length < 30 && <div className="mb-3"><Notice>Price history for PSX stocks is recorded locally each trading day ({hist.length} so far), so this chart grows over time.</Notice></div>}
+          {hist.length < 30 && <div className="mb-3"><Notice>Price history is still loading from PSX&apos;s daily files ({hist.length} days so far). Refresh in a few minutes.</Notice></div>}
           <PriceChart daily={hist} />
         </div>
         <SignalPanel signal={signal} />
+      </div>
+
+      <div className="mb-8 grid gap-4 lg:grid-cols-[3fr_2fr]">
+        <Section title="Last 3 trading days" subtitle="Daily prices and the likely reasons behind each move">
+          <RecentMoves moves={moves} />
+        </Section>
+        <Section title="Technical indicators" subtitle="What the price trend is signalling">
+          <TechIndicators points={hist} />
+        </Section>
       </div>
 
       <div className="mb-8">

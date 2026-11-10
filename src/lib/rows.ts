@@ -13,11 +13,13 @@ export function toRow(s: StockView, withSignal = true): StockRow {
     weight: s.weight,
     shariah: s.shariah,
     sector: s.company?.sector,
-    ytd: s.company?.ytd,
-    change1y: s.company?.change1y,
+    threeDay: s.threeDay,
+    ytd: s.company?.ytd ?? s.returns?.ytd,
+    change1y: s.company?.change1y ?? s.returns?.yoy,
     pe: s.company?.pe,
-    stability: s.company ? s.stability : undefined,
-    signal: withSignal && s.company ? s.signal : undefined,
+    // Outlook and stability need either the company page or enough daily history.
+    stability: s.company || s.history.length >= 40 ? s.stability : undefined,
+    signal: withSignal && (s.company || s.history.length >= 40) ? s.signal : undefined,
     divFrequency: s.dividend?.frequency,
     divYield: s.dividend?.yieldPct,
   };

@@ -12,6 +12,7 @@ export type StockRow = {
   name: string;
   price: number;
   changePct: number;
+  threeDay?: number | null;
   volume: number;
   marketCapM: number;
   weight?: number;
@@ -26,7 +27,7 @@ export type StockRow = {
   divYield?: number | null;
 };
 
-type Key = "symbol" | "price" | "changePct" | "volume" | "marketCapM" | "weight" | "ytd" | "change1y" | "pe" | "stability" | "score" | "divYield";
+type Key = "symbol" | "price" | "changePct" | "threeDay" | "volume" | "marketCapM" | "weight" | "ytd" | "change1y" | "pe" | "stability" | "score" | "divYield";
 
 const DIV_SCHEDULES = ["Monthly", "Quarterly", "Half-yearly", "Annual"];
 
@@ -103,6 +104,7 @@ export default function StockTable({ rows, initialFilter = "all", showShariahFil
               {th("symbol", "Symbol", false)}
               {th("price", "Price")}
               {th("changePct", "Today")}
+              {hasCol("threeDay") && th("threeDay", "3 days")}
               {hasCol("ytd") && th("ytd", "YTD")}
               {hasCol("change1y") && th("change1y", "1 Year")}
               {hasCol("pe") && th("pe", "P/E")}
@@ -126,6 +128,7 @@ export default function StockTable({ rows, initialFilter = "all", showShariahFil
                 </td>
                 <td className="num px-3 py-2 text-right">{fmt(r.price)}</td>
                 <td className="px-3 py-2 text-right"><Change value={r.changePct} /></td>
+                {hasCol("threeDay") && <td className="px-3 py-2 text-right"><Change value={r.threeDay} /></td>}
                 {hasCol("ytd") && <td className="px-3 py-2 text-right"><Change value={r.ytd} /></td>}
                 {hasCol("change1y") && <td className="px-3 py-2 text-right"><Change value={r.change1y} /></td>}
                 {hasCol("pe") && <td className="num px-3 py-2 text-right">{fmt(r.pe, 1)}</td>}

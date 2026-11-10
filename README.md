@@ -35,7 +35,15 @@ Open http://localhost:3000. Pages refresh every 60 seconds.
 
 ### PSX history
 
-PSX doesn't publish free historical prices, so the app saves each day's close to `data/psx-history.json` every time it reads a quote. PSX charts and PSX MTD and same-month-last-year figures fill in as the app runs on trading days. Per-stock YTD and 1-year change come directly from PSX, so they're available straight away.
+PSX publishes a daily market summary file (`dps.psx.com.pk/download/mkt_summary/<date>.Z`) with every stock's open, high, low, close, volume and previous close. When the server first starts, it downloads about 13 months of these files in the background, two at a time with a pause between them. After that it only fetches new days. Closes are saved to `data/psx-history.json`, which drives the stock charts, technical indicators, MTD, YTD, YoY and the 3-day change. The KSE-100 index itself isn't in these files, so its chart is still built from live readings.
+
+The stock page also shows the last 3 trading days. Each day lists the likely reasons for the move (`src/lib/moves.ts`):
+- ex-dividend, ex-bonus and ex-rights adjustments
+- the KSE-100 and sector moves that day
+- out- or underperformance against the sector
+- volume against the 10-day average
+- opening gaps, where the price closed in the day's range, and circuit limits
+- that day's company and market news
 
 ## Prediction model (`src/lib/analytics.ts`)
 

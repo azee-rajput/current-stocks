@@ -1,7 +1,6 @@
-// Local daily-close store for PSX symbols. PSX's history API isn't openly
-// available, so every time we read a live quote we record it as that day's
-// close. The store grows each day the app runs and powers PSX charts and
-// MTD / same-month-last-year figures.
+// Local daily-close store for PSX symbols. Filled from PSX's daily market
+// summary files (see psxDaily.ts) and from live quotes as the app runs; it
+// powers PSX charts and MTD / YTD / same-month-last-year figures.
 import fs from "node:fs";
 import path from "node:path";
 
@@ -41,14 +40,35 @@ function pktTradingDate(now = new Date()): string | null {
   return pkt.toISOString().slice(0, 10);
 }
 
-export function recordCloses(values: Record<string, number>) {
-  const date = pktTradingDate();
-  if (!date) return;
+/**
+ * Save closes for `date` (from a PSX daily file), or for today from live quotes
+ * when no date is given. A live quote equal to the last stored close is skipped:
+ * before the open and on holidays PSX still shows the previous session.
+ */
+export function recordCloses(values: Record<string, number>, date?: string) {
+  const live = !date;
+  const day = date ?? pktTradingDate();
+  if (!day) return;
   const store = load();
   for (const [key, v] of Object.entries(values)) {
     if (!Number.isFinite(v) || v <= 0) continue;
-    (store[key] ??= {})[date] = v;
+    const rows = (store[key] ??= {});
+    if (live && !(day in rows)) {
+      const lastDate = Object.keys(rows).filter((d) => d < day).sort().at(-1);
+      if (lastDate && rows[lastDate] === v) continue;
+    }
+    rows[day] = v;
   }
+  scheduleSave();
+}
+
+/** True once a full day's closes for `date` (YYYY-MM-DD) are stored under the marker key. */
+export function hasDay(date: string): boolean {
+  return !!load()["__days"]?.[date];
+}
+
+export function markDay(date: string) {
+  (load()["__days"] ??= {})[date] = 1;
   scheduleSave();
 }
 
