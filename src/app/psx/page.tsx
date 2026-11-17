@@ -3,7 +3,7 @@ import PriceChart from "@/components/PriceChart";
 import StockTable from "@/components/StockTable";
 import { Change, Notice, PeriodGrid, Section } from "@/components/ui";
 import { getIndices, getKse100Quick } from "@/lib/market";
-import { getHistory } from "@/lib/history";
+import { getKse100History } from "@/lib/indexHistory";
 import { returns } from "@/lib/analytics";
 import { psxMarketStatus } from "@/lib/psx";
 import { toRow } from "@/lib/rows";
@@ -16,7 +16,7 @@ export const maxDuration = 60;
 export default async function PsxPage() {
   const [indices, stocks] = await Promise.all([getIndices().catch(() => []), getKse100Quick().catch(() => [])]);
   const kse = indices.find((i) => i.code === "KSE100");
-  const hist = getHistory("IDX:KSE100");
+  const { points: hist, estimated } = await getKse100History();
   const r = returns(hist);
   const status = psxMarketStatus();
 
@@ -45,11 +45,16 @@ export default async function PsxPage() {
             { label: "vs same month LY", value: r?.sameMonthLY },
             { label: "3 Months", value: r?.m3 },
           ]} />
+          {estimated && (
+            <p className="mt-3 text-xs text-text-2">
+              History is estimated: PSX&apos;s free daily files have stock prices but not index values, so past levels are rebuilt from the
+              100 member stocks (weighted by index weight, dividends included) and anchored to today&apos;s live value. It uses today&apos;s
+              members throughout, so periods with membership changes can differ slightly from the official index.
+            </p>
+          )}
           {hist.length < 30 && (
             <div className="mt-3"><Notice>
-              PSX doesn&apos;t offer free historical data, so this app records each day&apos;s close locally.
-              MTD, YTD and same-month-last-year figures fill in as history builds ({hist.length} day{hist.length === 1 ? "" : "s"} recorded so far).
-              Per-stock YTD and 1-year changes are available now on each stock page and in Predictions &amp; Picks.
+              Index history isn&apos;t available yet ({hist.length} day{hist.length === 1 ? "" : "s"}). It fills in once the PSX daily files have loaded.
             </Notice></div>
           )}
           <div className="mt-4"><PriceChart daily={hist} /></div>

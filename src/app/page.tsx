@@ -6,6 +6,7 @@ import { Change, Notice, Section, SignalBadge, StatTile } from "@/components/ui"
 import { getAssetViews, getIndices, getKse100Quick, getMarketNews } from "@/lib/market";
 import { psxMarketStatus } from "@/lib/psx";
 import { getHistory } from "@/lib/history";
+import { getKse100History } from "@/lib/indexHistory";
 import { fmt, fmtCompact } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -13,11 +14,12 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export default async function Home() {
-  const [indices, stocks, assets, news] = await Promise.all([
+  const [indices, stocks, assets, news, kseHist] = await Promise.all([
     getIndices().catch(() => []),
     getKse100Quick().catch(() => []),
     getAssetViews(),
     getMarketNews().catch(() => []),
+    getKse100History().catch(() => ({ points: [], estimated: false })),
   ]);
   const status = psxMarketStatus();
   const idx = (c: string) => indices.find((i) => i.code === c);
@@ -52,7 +54,7 @@ export default async function Home() {
         {tiles.map((t) => (
           <StatTile key={t.label} label={t.label} value={fmt(t.i?.value)} change={t.i?.changePct} href={t.href}
             sub={t.i ? `${t.i.change > 0 ? "+" : ""}${fmt(t.i.change)} pts` : undefined}
-            spark={getHistory(`IDX:${t.code}`)} />
+            spark={t.code === "KSE100" ? kseHist.points.slice(-60) : getHistory(`IDX:${t.code}`)} />
         ))}
         {(["gold-pkr", "usdpkr", "brent"] as const).map((id) => {
           const v = asset(id);
