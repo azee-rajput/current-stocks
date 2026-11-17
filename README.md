@@ -15,7 +15,17 @@ Open http://localhost:3000. Pages refresh every 60 seconds.
 
 ## Deploy (Vercel)
 
-Import the GitHub repo in Vercel and keep the default Next.js settings. The `prebuild` step (`scripts/backfill.mjs`) downloads about 13 months of PSX daily closes during each build and bundles them with the app. Vercel's disk is read-only at runtime, so days after the deploy are kept in memory only. Redeploy now and then to refresh the bundled history. `vercel.json` runs the functions in Mumbai (`bom1`), the region closest to PSX.
+Import the GitHub repo in Vercel and keep the default Next.js settings. `vercel.json` runs the functions in Singapore (`sin1`), because PSX refuses requests from some regions, including Vercel's Mumbai servers and its build servers.
+
+Price history ships with the code: `data/psx-history.json` is committed to the repo. At runtime the site tops up the last ~60 days in memory, because Vercel's disk is read-only. To refresh the snapshot, run this on a machine that can reach PSX (for example your PC in Pakistan), then commit and push the updated file:
+
+```bash
+node scripts/backfill.mjs
+```
+
+The `prebuild` step runs the same script during builds; where PSX blocks the build server it just keeps the committed snapshot.
+
+The KSE-100's own history is estimated from its member stocks (`src/lib/indexHistory.ts`), because the daily files don't include index values.
 
 ## Pages
 
