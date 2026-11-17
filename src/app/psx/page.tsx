@@ -10,6 +10,8 @@ import { toRow } from "@/lib/rows";
 import { fmt } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+// Many upstream fetches on a cold start; allow up to 60s on serverless hosts.
+export const maxDuration = 60;
 
 export default async function PsxPage() {
   const [indices, stocks] = await Promise.all([getIndices().catch(() => []), getKse100Quick().catch(() => [])]);

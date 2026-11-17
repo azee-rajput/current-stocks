@@ -20,7 +20,9 @@ function load(): Store {
 }
 
 function scheduleSave() {
-  if (g.__pkHistTimer) return;
+  // Serverless hosts (Vercel) have a read-only disk: keep runtime additions in
+  // memory only; the file is refreshed by scripts/backfill.mjs on each deploy.
+  if (process.env.VERCEL || g.__pkHistTimer) return;
   g.__pkHistTimer = setTimeout(() => {
     g.__pkHistTimer = undefined;
     try {

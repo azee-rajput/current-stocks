@@ -13,6 +13,10 @@ npm run dev
 
 Open http://localhost:3000. Pages refresh every 60 seconds.
 
+## Deploy (Vercel)
+
+Import the GitHub repo in Vercel and keep the default Next.js settings. The `prebuild` step (`scripts/backfill.mjs`) downloads about 13 months of PSX daily closes during each build and bundles them with the app. Vercel's disk is read-only at runtime, so days after the deploy are kept in memory only. Redeploy now and then to refresh the bundled history. `vercel.json` runs the functions in Mumbai (`bom1`), the region closest to PSX.
+
 ## Pages
 
 | Route | What it shows |

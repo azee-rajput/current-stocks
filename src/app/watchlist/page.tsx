@@ -5,6 +5,8 @@ import { toRow } from "@/lib/rows";
 import WatchlistView, { type AssetRow } from "./WatchlistView";
 
 export const dynamic = "force-dynamic";
+// Many upstream fetches on a cold start; allow up to 60s on serverless hosts.
+export const maxDuration = 60;
 
 export default async function WatchlistPage() {
   const [kse, kmi, assets] = await Promise.all([

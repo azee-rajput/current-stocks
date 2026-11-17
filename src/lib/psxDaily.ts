@@ -128,7 +128,8 @@ const g = globalThis as unknown as { __pkBackfill?: Promise<void> };
  * YTD and YoY work straight away. Days already stored are skipped, and files
  * are fetched two at a time with a pause, to stay light on PSX.
  */
-export function startBackfill(days = 400) {
+export function startBackfill(days = process.env.VERCEL ? 45 : 400) {
+  // On Vercel the deploy already ships ~13 months (scripts/backfill.mjs), so only the days since then are fetched.
   if (g.__pkBackfill) return;
   const todo = weekdaysBack(Math.round((days * 5) / 7)).filter((d) => !hasDay(d));
   if (!todo.length) return;

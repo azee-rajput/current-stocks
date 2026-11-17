@@ -8,6 +8,8 @@ import { toRow } from "@/lib/rows";
 import { fmt } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+// Many upstream fetches on a cold start; allow up to 60s on serverless hosts.
+export const maxDuration = 60;
 
 function PickList({ title, subtitle, rows, metric }: { title: string; subtitle: string; rows: StockView[]; metric: (s: StockView) => React.ReactNode }) {
   return (

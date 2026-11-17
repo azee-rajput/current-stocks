@@ -20,6 +20,8 @@ import { getRecentDays } from "@/lib/psxDaily";
 import { explainMoves } from "@/lib/moves";
 
 export const dynamic = "force-dynamic";
+// Many upstream fetches on a cold start; allow up to 60s on serverless hosts.
+export const maxDuration = 60;
 
 export default async function StockPage({ params }: { params: Promise<{ symbol: string }> }) {
   const { symbol } = await params;

@@ -9,6 +9,8 @@ import { getHistory } from "@/lib/history";
 import { fmt, fmtCompact } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+// Many upstream fetches on a cold start; allow up to 60s on serverless hosts.
+export const maxDuration = 60;
 
 export default async function Home() {
   const [indices, stocks, assets, news] = await Promise.all([
