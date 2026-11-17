@@ -54,6 +54,7 @@ store.__days ??= {};
 const todo = weekdaysBack(Math.round((DAYS * 5) / 7)).filter((d) => !store.__days[d]);
 console.log(`[backfill] ${todo.length} days to fetch`);
 let ok = 0;
+let blocked = 0;
 for (let i = 0; i < todo.length; i += 4) {
   await Promise.all(
     todo.slice(i, i + 4).map(async (date) => {
@@ -61,7 +62,10 @@ for (let i = 0; i < todo.length; i += 4) {
         const res = await fetch(`https://dps.psx.com.pk/download/mkt_summary/${date}.Z`, { headers: { "User-Agent": UA } });
         const old = Date.now() - Date.parse(date + "T00:00:00Z") > 3 * 86_400_000;
         if (!res.ok) {
-          if (old) store.__days[date] = 1; // holiday: don't retry
+          // 404 = no trading that day (holiday): don't retry. Other errors (e.g. PSX
+          // blocking this machine's region) leave the day open for a later run.
+          if (res.status === 404 && old) store.__days[date] = 1;
+          else if (res.status !== 404) blocked++;
           return;
         }
         const closes = parseCloses(unzipFirst(Buffer.from(await res.arrayBuffer())));
@@ -78,3 +82,4 @@ for (let i = 0; i < todo.length; i += 4) {
 fs.mkdirSync(path.dirname(FILE), { recursive: true });
 fs.writeFileSync(FILE, JSON.stringify(store));
 console.log(`[backfill] stored ${ok} new trading days -> ${path.relative(process.cwd(), FILE)}`);
+if (blocked) console.warn(`[backfill] ${blocked} requests were refused by PSX (this build machine's region may be blocked); using the committed snapshot.`);

@@ -41,4 +41,6 @@ yarn-error.log*
 next-env.d.ts
 
 # locally recorded PSX price history
-/data/
+/data/*
+# The history snapshot is committed so deploys have it even when PSX blocks the build servers.
+!/data/psx-history.json

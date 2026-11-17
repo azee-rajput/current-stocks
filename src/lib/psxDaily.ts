@@ -81,7 +81,8 @@ const isOld = (date: string) => Date.now() - Date.parse(date + "T00:00:00Z") > 3
 async function fetchDay(date: string): Promise<Day | null> {
   const res = await fetch(`https://dps.psx.com.pk/download/mkt_summary/${date}.Z`, { headers: { "User-Agent": UA }, cache: "no-store" });
   if (!res.ok) {
-    if (isOld(date)) markDay(date);
+    // Only a 404 means no trading that day; other errors (e.g. a region block) should be retried later.
+    if (res.status === 404 && isOld(date)) markDay(date);
     return null;
   }
   const rows = parse(unzipFirst(Buffer.from(await res.arrayBuffer())));
@@ -128,8 +129,8 @@ const g = globalThis as unknown as { __pkBackfill?: Promise<void> };
  * YTD and YoY work straight away. Days already stored are skipped, and files
  * are fetched two at a time with a pause, to stay light on PSX.
  */
-export function startBackfill(days = process.env.VERCEL ? 45 : 400) {
-  // On Vercel the deploy already ships ~13 months (scripts/backfill.mjs), so only the days since then are fetched.
+export function startBackfill(days = process.env.VERCEL ? 60 : 400) {
+  // On Vercel the deploy ships the committed history snapshot, so only recent days are topped up (in memory).
   if (g.__pkBackfill) return;
   const todo = weekdaysBack(Math.round((days * 5) / 7)).filter((d) => !hasDay(d));
   if (!todo.length) return;
